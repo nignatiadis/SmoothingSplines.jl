@@ -95,10 +95,17 @@ function QtQpR{T<:Real}(h::Vector{T}, α::T)
     out
 end
 
-
-macro blasfunc(x)
-    return :( $(BLAS.blasfunc(x) ))
+# temporary hack to use LAPACK wrapper,
+# as in
+# https://github.com/ApproxFun/BandedMatrices.jl/blob/master/src/blas.jl
+if VERSION < v"0.5.0-dev"
+    macro blasfunc(x)
+       return :( $(BLAS.blasfunc(x) ))
+    end
+else
+    import Base.BLAS.@blasfunc
 end
+
 
 for (pbtrf, pbtrs, elty) in
     ((:dpbtrf_,:dpbtrs_,:Float64),
