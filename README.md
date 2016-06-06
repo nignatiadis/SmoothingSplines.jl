@@ -4,6 +4,27 @@
 
 A Julia package for nonparametric regression with Cubic Smoothing Splines. The initial aim is to provide the same functionality as R's `smooth.spline` function and competitive computational performance. The implementation however is completely independent of the R function and based on the algorithm by Reinsch [1], as described in Chapter 2 of [2].
 
+```julia
+using SmoothingSplines
+using RDatasets
+using Gadfly
+
+cars = dataset("datasets","cars")
+X = map(Float64,convert(Array,cars[:Speed]))
+Y = map(Float64,convert(Array,cars[:Dist]))
+
+spl = fit(SmoothingSpline, X, Y, 250.0)
+Ypred = SmoothingSplines.predict(spl)
+plot(layer(x=X, y=Y, Geom.point),
+	layer(x=X, y=Ypred, Geom.line, 	Theme(default_color=colorant"red")))
+```
+
+### TODO
+
+* Better docs
+* conversion between regularization parameter λ and degrees of freedom
+* automatic selection of λ (LOOCV, GCV)
+* subsampling of design grid for higher efficiency
 
 
 **References**
