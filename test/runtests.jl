@@ -9,7 +9,7 @@ using Base.Test
 #Y = Y[idx]
 #h = diff(X)
 
-
+# first test some of the helper functions
 n=5
 Y = rand(n)
 h = [1.0 for i=1:(n-1)]
@@ -39,3 +39,13 @@ SmoothingSplines.pbtrs!('U', 2, tmpQtQpR, γ)
 gfull = Y - λ*Qfull*γfull
 g = Y - λ*A_mul_B!(zeros(Y), Q, γ)
 @test g ≈ gfull
+
+# now test the full algorithm, and predict functions
+srand(1)
+n=50
+X = rand(n) .* 3
+Y = 2 .* X.^2 - X .- randn(n)
+
+spl = fit(SmoothingSpline, X, Y, 1.0)
+
+@test predict(spl,X) ≈ predict(spl)

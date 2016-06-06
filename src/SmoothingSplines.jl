@@ -75,6 +75,49 @@ function predict{T<:LAPACKFloat}(spl::SmoothingSpline{T})
     g[spl.Xrank]
 end
 
+function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, x::T)
+    n = length(spl.Xdesign)
+    idxl = searchsortedlast(spl.Xdesign, x)
+    idxr = idxl + 1
+    if idxl == 0 # linear extrapolation to the left
+        gl = spl.g[1]
+        gr = spl.g[2]
+        γ  = spl.γ[1]
+        xl = spl.Xdesign[1]
+        xr = spl.Xdesign[2]
+        gprime = (gr-gl)/(xr-xl) - 1/6*(xr-xl)*γ
+        val = gl - (xl-x)*gprime
+    elseif idxl == n # linear extrapolation to the right
+        gl = spl.g[n-1]
+        gr = spl.g[n]
+        γ  = spl.γ[n-2]
+        xl = spl.Xdesign[n-1]
+        xr = spl.Xdesign[n]
+        gprime = (gr-gl)/(xr-xl) +1/6*(xr-xl)*γ
+        val = gr + (x - xr)*gprime
+    else # cubic interpolation
+        xl = spl.Xdesign[idxl]
+        xr = spl.Xdesign[idxr]
+        γl = idxl == 1 ? zero(T) : spl.γ[idxl-1]
+        γr = idxl == n-1 ? zero(T) : spl.γ[idxr-1]
+        gl = spl.g[idxl]
+        gr = spl.g[idxr]
+        h = xr-xl
+        val = ((x-xl)*gr + (xr-x)*gl)/h
+        val -=  1/6*(x-xl)*(xr-x)*((1 + (x-xl)/h)*γr + (1+ (xr-x)/h)*γl)
+    end
+    val
+end
+
+function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, xs::Vector{T})
+    g = zeros(xs)
+    for (i,x) in enumerate(xs)
+        # can be made more efficient as in StatsBase ECDF code
+        g[i] = predict(spl, x)
+    end
+    g
+end
+
 # TODO: this mean should be weighted for weighted case
 function running_rle_mean!{T<:Real}(g::Vector{T}, Y::Vector{T}, rlecount::Vector{Int64})
   length(g) == length(rlecount) ||  throw(DimensionMismatch())
