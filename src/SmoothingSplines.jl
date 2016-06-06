@@ -1,9 +1,11 @@
 module SmoothingSplines
 
 import StatsBase: fit!, fit, RegressionModel, rle, ordinalrank
+using Reexport
 
-export SmoothingSpline, fit!, fit, predict
+export SmoothingSpline
 
+@reexport using StatsBase
 
 LAPACKFloat = Union{Float32,Float64}
 
@@ -15,29 +17,30 @@ type SmoothingSpline{T<:LAPACKFloat} <: RegressionModel
     Xrank::Vector{Int}
     Xdesign::Vector{T}
     Xcount::Vector{Int} # to how many observations does X correspond?
-    weights::Vector{T}
+    weights::Vector{T} # don't implement this yet.
     RpαQtQ::Matrix{T} # in symmetric banded matrix format
     g::Vector{T} # fitted values
     γ::Vector{T} # 2nd derivatives of fitted vals
     λ::T
 end
 
-function fit{T<:LAPACKFloat}(::Type{SmoothingSpline}, X::Vector{T}, Y::Vector{T}, λ::T, ws=ones(Y))
+function fit{T<:LAPACKFloat}(::Type{SmoothingSpline}, X::Vector{T}, Y::Vector{T}, λ::T)
     Xrank = ordinalrank(X) # maybe speed this up when already sorted
     Xorig = sort(X)
     Yorig = sort(Y)
 
     Xdesign, Xcount = rle(Xorig)
+    ws = broadcast(T, Xcount)
 
-    RpαQtQ = QtQpR(diff(Xdesign), λ)
+    RpαQtQ = QtQpR(diff(Xdesign), λ, ws)
     pbtrf!('U', 2, RpαQtQ)
 
-    spl = SmoothingSpline{T}(Xorig, Yorig, Xrank, Xdesign, Xcount, ws, RpαQtQ, zeros(Y), zeros(length(Y)-2), λ)
+    spl = SmoothingSpline{T}(Xorig, Yorig, Xrank, Xdesign, Xcount, ws, RpαQtQ,
+                zeros(Xdesign), zeros(T,length(Xdesign)-2), λ)
     fit!(spl)
 end
 
 function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T})
-
     g = spl.g #store Y in g initially
     running_rle_mean!(g, spl.Yorig, spl.Xcount)
     Y = copy(g)
@@ -50,6 +53,7 @@ function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T})
     γ = At_mul_B!(spl.γ, Q, g)
     pbtrs!('U', 2, RpαQtQ, γ)
     A_mul_B!(g, Q, γ)
+    broadcast!(/, g, g, spl.weights)
     broadcast!(*, g, g, λ)
     broadcast!(-,g, Y, g)
     spl
@@ -119,7 +123,7 @@ function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, xs::V
 end
 
 # TODO: this mean should be weighted for weighted case
-function running_rle_mean!{T<:Real}(g::Vector{T}, Y::Vector{T}, rlecount::Vector{Int64})
+function running_rle_mean!{T<:Real}(g::Vector{T}, Y::Vector{T}, rlecount::Vector{Int})
   length(g) == length(rlecount) ||  throw(DimensionMismatch())
   curridx = 1::Int
   for i=1:length(rlecount)

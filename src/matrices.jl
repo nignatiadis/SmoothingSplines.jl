@@ -72,7 +72,7 @@ function Base.getindex{T}(R::ReinschR{T}, i::Int, j::Int)
     end
 end
 
-function QtQpR{T<:Real}(h::Vector{T}, α::T)
+function QtQpR{T<:Real}(h::Vector{T}, α::T, w::Vector{Int}=ones(Int, length(h)+1))
     # maybe has some redundant calculations but should be good enough for now
     n = length(h)-1
     Q = ReinschQ(h)
@@ -80,17 +80,19 @@ function QtQpR{T<:Real}(h::Vector{T}, α::T)
     out = zeros(T, 3, n)
     # start with main diagonal
     for i=1:n
-        out[3, i] = α*((Q[i+2,i] - Q[i+1,i])/h[i+1] - (Q[i+1,i] -Q[i, i])/h[i]) + R[i,i]
+        out[3, i] = α*((w[i+2]\Q[i+2,i] - w[i+1]\Q[i+1,i])/h[i+1] - (w[i+1]\Q[i+1,i] -w[i]\Q[i, i])/h[i]) +
+                  R[i,i]
     end
     # 1st superdiagonal
     for i=1:(n-1)
         # idx (i, i+1)
-        out[2,i+1] = α*((Q[i+2, i+1] - Q[i+1, i+1])/h[i+1] - Q[i+1, i+1]/h[i]) + R[i, i+1]
+        out[2,i+1] = α*((w[i+2]\Q[i+2, i+1] - w[i+1]\Q[i+1, i+1])/h[i+1] - w[i+1]\Q[i+1, i+1]/h[i]) +
+                  R[i, i+1]
     end
     # 2nd superdiagonal
     for i=1:(n-2)
         # idx (i, i+2)
-        out[1, i+2] = α*(Q[i+2, i+2]/h[i+1]) + R[i,i+2]
+        out[1, i+2] = α*(w[i+2]\Q[i+2, i+2]/h[i+1]) + R[i,i+2]
     end
     out
 end
