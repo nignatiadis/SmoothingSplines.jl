@@ -72,7 +72,7 @@ function Base.getindex{T}(R::ReinschR{T}, i::Int, j::Int)
     end
 end
 
-function QtQpR{T<:Real}(h::Vector{T}, α::T, w::Vector{Int}=ones(Int, length(h)+1))
+function QtQpR{T<:Real}(h::Vector{T}, α::T, w::Vector{T}=ones(T, length(h)+1))
     # maybe has some redundant calculations but should be good enough for now
     n = length(h)-1
     Q = ReinschQ(h)

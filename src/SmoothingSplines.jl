@@ -1,6 +1,6 @@
 module SmoothingSplines
 
-import StatsBase: fit!, fit, RegressionModel, rle, ordinalrank
+import StatsBase: fit!, fit, RegressionModel, rle, ordinalrank, mean
 using Reexport
 
 export SmoothingSpline
@@ -17,6 +17,7 @@ type SmoothingSpline{T<:LAPACKFloat} <: RegressionModel
     Xrank::Vector{Int}
     Xdesign::Vector{T}
     Xcount::Vector{Int} # to how many observations does X correspond?
+    Ydesign::Vector{T}
     weights::Vector{T} # don't implement this yet.
     RpαQtQ::Matrix{T} # in symmetric banded matrix format
     g::Vector{T} # fitted values
@@ -24,36 +25,39 @@ type SmoothingSpline{T<:LAPACKFloat} <: RegressionModel
     λ::T
 end
 
-function fit{T<:LAPACKFloat}(::Type{SmoothingSpline}, X::Vector{T}, Y::Vector{T}, λ::T)
+function fit{T<:LAPACKFloat}(::Type{SmoothingSpline}, X::Vector{T}, Y::Vector{T}, λ::T, wts::Vector{T}=ones(Y))
     Xrank = ordinalrank(X) # maybe speed this up when already sorted
-    Xorig = sort(X)
-    Yorig = sort(Y)
+    Xperm = sortperm(X)
+    Xorig = X[Xperm]
+    Yorig = Y[Xperm]
 
     Xdesign, Xcount = rle(Xorig)
-    ws = broadcast(T, Xcount)
+    ws = zeros(Xdesign)
+    Ydesign = zeros(Xdesign)
+    running_rle_mean!(Ydesign, ws, Yorig, Xcount, wts[Xperm])
 
     RpαQtQ = QtQpR(diff(Xdesign), λ, ws)
     pbtrf!('U', 2, RpαQtQ)
 
-    spl = SmoothingSpline{T}(Xorig, Yorig, Xrank, Xdesign, Xcount, ws, RpαQtQ,
+    spl = SmoothingSpline{T}(Xorig, Yorig, Xrank, Xdesign, Xcount, Ydesign, ws, RpαQtQ,
                 zeros(Xdesign), zeros(T,length(Xdesign)-2), λ)
     fit!(spl)
 end
 
 function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T})
-    g = spl.g #store Y in g initially
-    running_rle_mean!(g, spl.Yorig, spl.Xcount)
-    Y = copy(g)
+    Y = spl.Ydesign
+    ws = spl.weights
+    g = spl.g
     n = length(spl.g)
     h = diff(spl.Xdesign)
     λ = spl.λ
     Q = ReinschQ(h)
 
     RpαQtQ = spl.RpαQtQ
-    γ = At_mul_B!(spl.γ, Q, g)
+    γ = At_mul_B!(spl.γ, Q, Y) #Q^T*Y
     pbtrs!('U', 2, RpαQtQ, γ)
     A_mul_B!(g, Q, γ)
-    broadcast!(/, g, g, spl.weights)
+    broadcast!(/, g, g, ws)
     broadcast!(*, g, g, λ)
     broadcast!(-,g, Y, g)
     spl
@@ -122,15 +126,19 @@ function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, xs::V
     g
 end
 
-# TODO: this mean should be weighted for weighted case
-function running_rle_mean!{T<:Real}(g::Vector{T}, Y::Vector{T}, rlecount::Vector{Int})
+# update g and w in place
+function running_rle_mean!{T<:Real}(g::Vector{T}, w::Vector{T}, Y::Vector{T}, rlecount::Vector{Int}, ws::Vector{T})
   length(g) == length(rlecount) ||  throw(DimensionMismatch())
+  length(Y) == length(ws) || throw(DimensionMismatch())
   curridx = 1::Int
   for i=1:length(rlecount)
-    g[i] = mean(Y[curridx:(curridx+rlecount[i]-1)])
+    idxrange = curridx:(curridx+rlecount[i]-1)
+    g[i] = mean(Y[idxrange], WeightVec(ws[idxrange])) #todo: use weights by default
+    w[i] = sum(ws[idxrange])
     curridx += rlecount[i]
   end
   g
 end
+
 
 end # module
