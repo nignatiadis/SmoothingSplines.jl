@@ -25,7 +25,7 @@ type SmoothingSpline{T<:LAPACKFloat} <: RegressionModel
     λ::T
 end
 
-function fit{T<:LAPACKFloat}(::Type{SmoothingSpline}, X::Vector{T}, Y::Vector{T}, λ::T, wts::Vector{T}=ones(Y))
+function fit{T<:LAPACKFloat}(::Type{SmoothingSpline}, X::AbstractVector{T}, Y::AbstractVector{T}, λ::T, wts::AbstractVector{T}=ones(Y))
     Xrank = ordinalrank(X) # maybe speed this up when already sorted
     Xperm = sortperm(X)
     Xorig = X[Xperm]
@@ -63,7 +63,7 @@ function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T})
     spl
 end
 
-function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T}, Y::Vector{T})
+function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T}, Y::AbstractVector{T})
     spl.Y = Y[spl.idx]
     fit!(spl)
 end
@@ -117,7 +117,7 @@ function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, x::T)
     val
 end
 
-function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, xs::Vector{T})
+function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, xs::AbstractVector{T})
     g = zeros(xs)
     for (i,x) in enumerate(xs)
         # can be made more efficient as in StatsBase ECDF code
@@ -127,7 +127,7 @@ function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, xs::V
 end
 
 # update g and w in place
-function running_rle_mean!{T<:Real}(g::Vector{T}, w::Vector{T}, Y::Vector{T}, rlecount::Vector{Int}, ws::Vector{T})
+function running_rle_mean!{T<:Real}(g::AbstractVector{T}, w::AbstractVector{T}, Y::AbstractVector{T}, rlecount::AbstractVector{Int}, ws::AbstractVector{T})
   length(g) == length(rlecount) ||  throw(DimensionMismatch())
   length(Y) == length(ws) || throw(DimensionMismatch())
   curridx = 1::Int
