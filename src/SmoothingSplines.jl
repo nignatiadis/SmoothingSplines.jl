@@ -1,3 +1,5 @@
+__precompile__()
+
 module SmoothingSplines
 
 import StatsBase: fit!, fit, RegressionModel, rle, ordinalrank, mean
