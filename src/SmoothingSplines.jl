@@ -66,7 +66,7 @@ function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T})
 end
 
 function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T}, Y::AbstractVector{T})
-    spl.Y = Y[spl.idx]
+    spl.Yorig = Y[spl.Xrank]
     fit!(spl)
 end
 

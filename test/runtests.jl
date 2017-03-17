@@ -60,6 +60,11 @@ spl = fit(SmoothingSpline, X, Y, 1.0)
 
 @test predict(spl,X) ≈ predict(spl)
 
+# test explicitly setting the original values
+fit!(spl, Y)
+
+@test predict(spl,X) ≈ predict(spl)
+
 println("testing against smooth.spline on R cars dataset")
 # real data examples
 # cars dataset
