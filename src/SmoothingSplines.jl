@@ -135,7 +135,7 @@ function running_rle_mean!{T<:Real}(g::AbstractVector{T}, w::AbstractVector{T}, 
   curridx = 1::Int
   for i=1:length(rlecount)
     idxrange = curridx:(curridx+rlecount[i]-1)
-    g[i] = mean(Y[idxrange], WeightVec(ws[idxrange])) #todo: use weights by default
+    g[i] = mean(Y[idxrange], Weights(ws[idxrange])) #todo: use weights by default
     w[i] = sum(ws[idxrange])
     curridx += rlecount[i]
   end
