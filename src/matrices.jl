@@ -1,7 +1,7 @@
-import Base.LinAlg.LAPACK: chkstride1, chkuplo, BlasInt, liblapack
+import LinearAlgebra.LAPACK: chkstride1, chkuplo, BlasInt, liblapack
+import LinearAlgebra.BLAS: @blasfunc
 
-
-immutable ReinschQ{T} <: AbstractMatrix{T}
+struct ReinschQ{T} <: AbstractMatrix{T}
     h::Vector{T}
 end
 
@@ -10,7 +10,7 @@ function Base.size(Q::ReinschQ)
    (n+1, n-1)
 end
 
-function Base.getindex{T}(Q::ReinschQ{T},i::Int,j::Int)
+function Base.getindex(Q::ReinschQ{T},i::Int,j::Int) where T
     h = Q.h
     if (i == j)
         1/h[i]
@@ -23,7 +23,7 @@ function Base.getindex{T}(Q::ReinschQ{T},i::Int,j::Int)
     end
 end
 
-function Base.LinAlg.At_mul_B!(out::AbstractVector, Q::ReinschQ, g::AbstractVector)
+function LinearAlgebra.At_mul_B!(out::AbstractVector, Q::ReinschQ, g::AbstractVector)
     n = length(out)
     h = Q.h
     n == size(Q,2) || throw(DimensionMismatch())
@@ -37,7 +37,7 @@ function Base.LinAlg.At_mul_B!(out::AbstractVector, Q::ReinschQ, g::AbstractVect
     out
 end
 
-function Base.LinAlg.A_mul_B!(out::AbstractVector, Q::ReinschQ, g::AbstractVector)
+function LinearAlgebra.A_mul_B!(out::AbstractVector, Q::ReinschQ, g::AbstractVector)
     n = length(out)
     n == size(Q,1) || throw(DimensionMismatch())
     length(g) == size(Q,2) || throw(DimensionMismatch())
@@ -51,7 +51,7 @@ function Base.LinAlg.A_mul_B!(out::AbstractVector, Q::ReinschQ, g::AbstractVecto
 end
 
 
-immutable ReinschR{T} <: AbstractMatrix{T}
+struct ReinschR{T} <: AbstractMatrix{T}
     h::Vector{T}
 end
 
@@ -60,7 +60,7 @@ function Base.size(R::ReinschR)
    (n-1, n-1)
 end
 
-function Base.getindex{T}(R::ReinschR{T}, i::Int, j::Int)
+function Base.getindex(R::ReinschR{T}, i::Int, j::Int) where T
     # TODO: add check bounds
     h = R.h
     if (i==j)
@@ -72,7 +72,7 @@ function Base.getindex{T}(R::ReinschR{T}, i::Int, j::Int)
     end
 end
 
-function QtQpR{T<:Real}(h::AbstractVector{T}, α::T, w::AbstractVector{T}=ones(T, length(h)+1))
+function QtQpR(h::AbstractVector{T}, α::T, w::AbstractVector{T}=ones(T, length(h)+1)) where T<:Real
     # maybe has some redundant calculations but should be good enough for now
     n = length(h)-1
     Q = ReinschQ(h)
@@ -97,23 +97,12 @@ function QtQpR{T<:Real}(h::AbstractVector{T}, α::T, w::AbstractVector{T}=ones(T
     out
 end
 
-# temporary hack to use LAPACK wrapper,
-# as in
-# https://github.com/ApproxFun/BandedMatrices.jl/blob/master/src/blas.jl
-if VERSION < v"0.5.0-dev"
-    macro blasfunc(x)
-       return :( $(BLAS.blasfunc(x) ))
-    end
-else
-    import Base.BLAS.@blasfunc
-end
-
 
 for (pbtrf, pbtrs, elty) in
     ((:dpbtrf_,:dpbtrs_,:Float64),
      (:spbtrf_,:spbtrs_,:Float32),
-     (:zpbtrf_,:zpbtrs_,:Complex128),
-     (:cpbtrf_,:cpbtrs_,:Complex64))
+     (:zpbtrf_,:zpbtrs_,:ComplexF64),
+     (:cpbtrf_,:cpbtrs_,:ComplexF32))
     @eval begin
         # SUBROUTINE DPBTRF( UPLO, N, KD, AB, LDAB, INFO )
         # *     .. Scalar Arguments ..
@@ -127,10 +116,10 @@ for (pbtrf, pbtrs, elty) in
             chkstride1(AB)
             n    = size(AB, 2)
             info = Ref{BlasInt}()
-            ccall((@blasfunc($pbtrf), liblapack), Void,
-                  (Ptr{UInt8}, Ptr{BlasInt}, Ptr{BlasInt},
-                   Ptr{$elty}, Ptr{BlasInt}, Ptr{BlasInt}),
-                   &uplo, &n, &kd, AB, &max(1,stride(AB,2)), info)
+            ccall((@blasfunc($pbtrf), liblapack), Cvoid,
+                  (Ref{UInt8}, Ref{BlasInt}, Ref{BlasInt},
+                   Ptr{$elty}, Ref{BlasInt}, Ref{BlasInt}),
+                   uplo, n, kd, AB, max(1,stride(AB,2)), info)
             AB
         end
 
@@ -150,12 +139,12 @@ for (pbtrf, pbtrs, elty) in
             if n != size(B,1)
                 throw(DimensionMismatch("Matrix AB has dimensions $(size(AB)), but right hand side matrix B has dimensions $(size(B))"))
             end
-            ccall((@blasfunc($pbtrs), liblapack), Void,
-                  (Ptr{UInt8}, Ptr{BlasInt}, Ptr{BlasInt},  Ptr{BlasInt},
-                   Ptr{$elty}, Ptr{BlasInt}, Ptr{$elty},   Ptr{BlasInt},
-                   Ptr{BlasInt}),
-                  &uplo, &n, &kd, &size(B,2), AB,  &max(1,stride(AB,2)),
-                  B, &max(1,stride(B,2)), info)
+            ccall((@blasfunc($pbtrs), liblapack), Cvoid,
+                  (Ref{UInt8}, Ref{BlasInt}, Ref{BlasInt},  Ref{BlasInt},
+                   Ptr{$elty}, Ref{BlasInt}, Ptr{$elty},   Ref{BlasInt},
+                   Ref{BlasInt}),
+                  uplo, n, kd, size(B,2), AB,  max(1,stride(AB,2)),
+                  B, max(1,stride(B,2)), info)
             B
         end
     end

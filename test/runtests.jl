@@ -1,5 +1,8 @@
 using SmoothingSplines
-using Base.Test
+using Test
+
+using LinearAlgebra
+using Random
 
 #n=50
 #X = rand(n) .* 3
@@ -17,7 +20,7 @@ X = [0.0; cumsum(h)]
 λ = 1.0
 
 ws1 = ones(Float64, length(Y))
-ws2 = 1.0 + rand(n)
+ws2 = 1.0 .+ rand(n)
 ws_dict = Dict("uniform weights"=> ws1, "random weights"=>ws2)
 for (k,ws) in ws_dict
   println(k)
@@ -26,12 +29,12 @@ for (k,ws) in ws_dict
   Qfull = reshape(Float64[x for x in Q], size(Q))
   Rfull = reshape(Float64[x for x in R], size(R))
   QtYfull = Qfull'*Y
-  QtY = At_mul_B!(zeros(n-2), Q, Y)
+  QtY = At_mul_B!(fill(0.0, n-2), Q, Y)
 
   @test QtY ≈ QtYfull
 
 
-  tmpQtQpRfull = Rfull + λ*Qfull'*diagm(1./ws)*Qfull
+  tmpQtQpRfull = Rfull + λ*Qfull'*Matrix(Diagonal(1.0 ./ ws))*Qfull
   tmpQtQpR =SmoothingSplines. QtQpR(h, λ, ws)
   @test vec(tmpQtQpR[3,:]) ≈ diag(tmpQtQpRfull)
   @test vec(tmpQtQpR[2,2:end]) ≈ diag(tmpQtQpRfull,1)
@@ -43,8 +46,8 @@ for (k,ws) in ws_dict
   SmoothingSplines.pbtrs!('U', 2, tmpQtQpR, γ)
   @test γ ≈ γfull
 
-  gfull = Y - λ*diagm(1./ws)*Qfull*γfull
-  g = Y - λ*A_mul_B!(zeros(Y), Q, γ)./ws
+  gfull = Y - λ*Matrix(Diagonal(1.0./ws))*Qfull*γfull
+  g = Y - λ*A_mul_B!(zero(Y), Q, γ)./ws
   @test g ≈ gfull
 
   fullfit = fit(SmoothingSpline, X, Y, λ, ws)
@@ -54,7 +57,7 @@ println("testing predict function")
 srand(1)
 n=50
 X = rand(n) .* 3
-Y = 2 .* X.^2 - X .- randn(n)
+Y = 2 .* X.^2 .- X .- randn(n)
 
 spl = fit(SmoothingSpline, X, Y, 1.0)
 
@@ -76,7 +79,7 @@ Y = [2.0,10.0,4.0,22.0,16.0,10.0,18.0,26.0,34.0,17.0,28.0,14.0,20.0,24.0,
   32.0,40.0,50.0,42.0,56.0,76.0,84.0,36.0,46.0,68.0,32.0,48.0,52.0,56.0,
   64.0,66.0,54.0,70.0,92.0,93.0,120.0,85.0]
 # so that λ for this package is comparable to λ in smooth.spline
-X = (X-minimum(X))/(maximum(X)-minimum(X))
+X = (X .- minimum(X))/(maximum(X)-minimum(X))
 
 # compare to R.stats:
 # attach(cars)
@@ -87,4 +90,4 @@ Rpred =  [ 1.657809, 11.682913, 15.064409, 18.482339, 21.947078, 25.465623, 29.0
     32.707552, 36.423468, 40.195168, 44.054188, 48.025219, 52.115627, 56.323874,
     60.673887, 69.808295, 74.533703, 79.313597, 84.103688]
 cars_fit = fit(SmoothingSpline, X, Y, λ)
-@test_approx_eq_eps cars_fit.g Rpred 1e-4
+@test cars_fit.g ≈ Rpred rtol=1e-4
