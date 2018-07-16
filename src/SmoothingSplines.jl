@@ -4,6 +4,7 @@ module SmoothingSplines
 
 import StatsBase: fit!, fit, RegressionModel, rle, ordinalrank, mean
 using Reexport
+using LinearAlgebra
 
 export SmoothingSpline
 
@@ -13,7 +14,7 @@ LAPACKFloat = Union{Float32,Float64}
 
 include("matrices.jl")
 
-type SmoothingSpline{T<:LAPACKFloat} <: RegressionModel
+mutable struct SmoothingSpline{T<:LAPACKFloat} <: RegressionModel
     Xorig::Vector{T} # original grid points, but sorted
     Yorig::Vector{T} # original values, sorted according to x
     Xrank::Vector{Int}
@@ -27,26 +28,26 @@ type SmoothingSpline{T<:LAPACKFloat} <: RegressionModel
     λ::T
 end
 
-function fit{T<:LAPACKFloat}(::Type{SmoothingSpline}, X::AbstractVector{T}, Y::AbstractVector{T}, λ::T, wts::AbstractVector{T}=ones(Y))
+function fit(::Type{SmoothingSpline}, X::AbstractVector{T}, Y::AbstractVector{T}, λ::T, wts::AbstractVector{T}=fill(1.0, length(Y))) where T <: LAPACKFloat
     Xrank = ordinalrank(X) # maybe speed this up when already sorted
     Xperm = sortperm(X)
     Xorig = X[Xperm]
     Yorig = Y[Xperm]
 
     Xdesign, Xcount = rle(Xorig)
-    ws = zeros(Xdesign)
-    Ydesign = zeros(Xdesign)
+    ws = zero(Xdesign)
+    Ydesign = zero(Xdesign)
     running_rle_mean!(Ydesign, ws, Yorig, Xcount, wts[Xperm])
 
     RpαQtQ = QtQpR(diff(Xdesign), λ, ws)
     pbtrf!('U', 2, RpαQtQ)
 
     spl = SmoothingSpline{T}(Xorig, Yorig, Xrank, Xdesign, Xcount, Ydesign, ws, RpαQtQ,
-                zeros(Xdesign), zeros(T,length(Xdesign)-2), λ)
+                             zero(Xdesign), fill(zero(T),length(Xdesign)-2), λ)
     fit!(spl)
 end
 
-function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T})
+function fit!(spl::SmoothingSpline{T}) where T<:LAPACKFloat
     Y = spl.Ydesign
     ws = spl.weights
     g = spl.g
@@ -65,17 +66,17 @@ function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T})
     spl
 end
 
-function fit!{T<:LAPACKFloat}(spl::SmoothingSpline{T}, Y::AbstractVector{T})
+function fit!(spl::SmoothingSpline{T}, Y::AbstractVector{T}) where T<:LAPACKFloat
     spl.Y = Y[spl.idx]
     fit!(spl)
 end
 
 
-function predict{T<:LAPACKFloat}(spl::SmoothingSpline{T})
+function predict(spl::SmoothingSpline{T}) where T<:LAPACKFloat
     # need to convert back from RLE encoding
     Xcount = spl.Xcount
     curridx = 1::Int
-    g = zeros(length(spl.Yorig))
+    g = fill(0.0, length(spl.Yorig))
     @inbounds for i=1:length(Xcount)
         @inbounds   for j=1:Xcount[i]
             g[curridx] = spl.g[i]
@@ -85,7 +86,7 @@ function predict{T<:LAPACKFloat}(spl::SmoothingSpline{T})
     g[spl.Xrank]
 end
 
-function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, x::T)
+function predict(spl::SmoothingSpline{T}, x::T) where T<:LAPACKFloat
     n = length(spl.Xdesign)
     idxl = searchsortedlast(spl.Xdesign, x)
     idxr = idxl + 1
@@ -119,8 +120,8 @@ function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, x::T)
     val
 end
 
-function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, xs::AbstractVector{T})
-    g = zeros(xs)
+function predict(spl::SmoothingSpline{T}, xs::AbstractVector{T}) where T<:SmoothingSplines.LAPACKFloat
+    g = zero(xs)
     for (i,x) in enumerate(xs)
         # can be made more efficient as in StatsBase ECDF code
         g[i] = predict(spl, x)
@@ -129,7 +130,7 @@ function predict{T<:SmoothingSplines.LAPACKFloat}(spl::SmoothingSpline{T}, xs::A
 end
 
 # update g and w in place
-function running_rle_mean!{T<:Real}(g::AbstractVector{T}, w::AbstractVector{T}, Y::AbstractVector{T}, rlecount::AbstractVector{Int}, ws::AbstractVector{T})
+function running_rle_mean!(g::AbstractVector{T}, w::AbstractVector{T}, Y::AbstractVector{T}, rlecount::AbstractVector{Int}, ws::AbstractVector{T}) where T<:Real
   length(g) == length(rlecount) ||  throw(DimensionMismatch())
   length(Y) == length(ws) || throw(DimensionMismatch())
   curridx = 1::Int
