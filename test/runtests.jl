@@ -54,7 +54,7 @@ for (k,ws) in ws_dict
 end
 # now test the full algorithm, and predict functions
 println("testing predict function")
-srand(1)
+Random.seed!(1)
 n=50
 X = rand(n) .* 3
 Y = 2 .* X.^2 .- X .- randn(n)
