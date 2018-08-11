@@ -29,7 +29,7 @@ for (k,ws) in ws_dict
   Qfull = reshape(Float64[x for x in Q], size(Q))
   Rfull = reshape(Float64[x for x in R], size(R))
   QtYfull = Qfull'*Y
-  QtY = At_mul_B!(fill(0.0, n-2), Q, Y)
+  QtY = mul!(fill(0.0, n-2), transpose(Q), Y)
 
   @test QtY ≈ QtYfull
 
@@ -47,7 +47,7 @@ for (k,ws) in ws_dict
   @test γ ≈ γfull
 
   gfull = Y - λ*Matrix(Diagonal(1.0./ws))*Qfull*γfull
-  g = Y - λ*A_mul_B!(zero(Y), Q, γ)./ws
+  g = Y - λ*mul!(zero(Y), Q, γ)./ws
   @test g ≈ gfull
 
   fullfit = fit(SmoothingSpline, X, Y, λ, ws)
