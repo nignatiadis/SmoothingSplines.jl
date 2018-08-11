@@ -55,9 +55,9 @@ function fit!(spl::SmoothingSpline{T}) where T<:LAPACKFloat
     Q = ReinschQ(h)
 
     RpαQtQ = spl.RpαQtQ
-    γ = At_mul_B!(spl.γ, Q, Y) #Q^T*Y
+    γ = mul!(spl.γ, transpose(Q), Y) #Q^T*Y
     pbtrs!('U', 2, RpαQtQ, γ)
-    A_mul_B!(g, Q, γ)
+    mul!(g, Q, γ)
     broadcast!(/, g, g, ws)
     broadcast!(*, g, g, λ)
     broadcast!(-,g, Y, g)

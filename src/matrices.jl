@@ -23,11 +23,11 @@ function Base.getindex(Q::ReinschQ{T},i::Int,j::Int) where T
     end
 end
 
-function LinearAlgebra.At_mul_B!(out::AbstractVector, Q::ReinschQ, g::AbstractVector)
+function LinearAlgebra.mul!(out::AbstractVector, Q::Transpose{T,ReinschQ{T}}, g::AbstractVector) where T
     n = length(out)
-    h = Q.h
-    n == size(Q,2) || throw(DimensionMismatch())
-    length(g)   == size(Q,1) || throw(DimensionMismatch())
+    h = Q.parent.h
+    n == size(Q,1) || throw(DimensionMismatch())
+    length(g)   == size(Q,2) || throw(DimensionMismatch())
     Δgp1 = (g[2] - g[1])/h[1]
     @inbounds for i=1:length(out)
         Δg = Δgp1
@@ -37,7 +37,7 @@ function LinearAlgebra.At_mul_B!(out::AbstractVector, Q::ReinschQ, g::AbstractVe
     out
 end
 
-function LinearAlgebra.A_mul_B!(out::AbstractVector, Q::ReinschQ, g::AbstractVector)
+function LinearAlgebra.mul!(out::AbstractVector, Q::ReinschQ, g::AbstractVector)
     n = length(out)
     n == size(Q,1) || throw(DimensionMismatch())
     length(g) == size(Q,2) || throw(DimensionMismatch())
