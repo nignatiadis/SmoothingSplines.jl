@@ -15,11 +15,11 @@ X = map(Float64,convert(Array,cars[:Speed]))
 Y = map(Float64,convert(Array,cars[:Dist]))
 
 spl = fit(SmoothingSpline, X, Y, 250.0) # λ=250.0
-Ypred = SmoothingSplines.predict(spl) # fitted vector
+Ypred = predict(spl) # fitted vector
 plot(layer(x=X, y=Y, Geom.point),
 	layer(x=X, y=Ypred, Geom.line, 	Theme(default_color=colorant"red")))
 
-SmoothingSplines.predict(spl, 20.0) #prediction at arbitrary point
+predict(spl, 20.0) #prediction at arbitrary point
 ```
 
 ### TODO
