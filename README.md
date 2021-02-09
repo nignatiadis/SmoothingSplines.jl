@@ -1,7 +1,8 @@
 # SmoothingSplines
 
-[![Build Status](https://travis-ci.org/nignatiadis/SmoothingSplines.jl.svg?branch=master)](https://travis-ci.org/nignatiadis/SmoothingSplines.jl)
-[![Build Status](https://ci.appveyor.com/api/projects/status/github/nignatiadis/SmoothingSplines.jl?branch=master&svg=true)](https://ci.appveyor.com/project/nignatiadis/smoothingsplines-jl/branch/master)
+[![Build Status](https://github.com/nignatiadis/SmoothingSplines.jl/workflows/CI/badge.svg)](https://github.com/nignatiadis/SmoothingSplines.jl/actions)
+[![Coverage](https://codecov.io/gh/nignatiadis/SmoothingSplines.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/nignatiadis/SmoothingSplines.jl)
+
 
 A Julia package for nonparametric regression with Cubic Smoothing Splines. The initial aim is to provide the same functionality as R's `smooth.spline` function and competitive computational performance. The implementation however is completely independent of the R function and based on the algorithm by Reinsch [1], as described in Chapter 2 of [2].
 
