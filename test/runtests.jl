@@ -62,7 +62,7 @@ Y = 2 .* X.^2 .- X .- randn(n)
 spl = fit(SmoothingSpline, X, Y, 1.0)
 
 @test predict(spl,X) ≈ predict(spl)
-
+@test SmoothingSplines.predict(spl, X) == StatsBase.predict(spl, X)
 println("testing against smooth.spline on R cars dataset")
 # real data examples
 # cars dataset
