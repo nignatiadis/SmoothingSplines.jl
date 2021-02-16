@@ -1,6 +1,6 @@
 module SmoothingSplines
 
-import StatsBase: fit!, fit, RegressionModel, rle, ordinalrank, mean
+import StatsBase: fit!, fit, RegressionModel, rle, ordinalrank, mean, predict
 using Reexport
 using LinearAlgebra
 
