@@ -12,8 +12,8 @@ using RDatasets
 using Gadfly
 
 cars = dataset("datasets","cars")
-X = map(Float64,convert(Array,cars[:Speed]))
-Y = map(Float64,convert(Array,cars[:Dist]))
+X = map(Float64,convert(Array,cars[!,:Speed]))
+Y = map(Float64,convert(Array,cars[!,:Dist]))
 
 spl = fit(SmoothingSpline, X, Y, 250.0) # λ=250.0
 Ypred = predict(spl) # fitted vector
